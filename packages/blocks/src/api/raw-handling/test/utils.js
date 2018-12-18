@@ -1,8 +1,26 @@
+
 /**
  * Internal dependencies
  */
 import { getPhrasingContentSchema } from '../phrasing-content';
-import { isEmpty, isPlain, removeInvalidHTML } from '../utils';
+import { getBlockContentSchema, isEmpty, isPlain, removeInvalidHTML } from '../utils';
+
+jest.mock( '@wordpress/data', () => {
+	return {
+		select: jest.fn( ( store ) => {
+			switch ( store ) {
+				case 'core/blocks': {
+					return {
+						hasBlockSupport: ( blockName, supports ) => {
+							return blockName === 'core/paragraph' &&
+								supports === 'anchor';
+						},
+					};
+				}
+			}
+		} ),
+	};
+} );
 
 describe( 'isEmpty', () => {
 	function isEmptyHTML( HTML ) {
@@ -162,5 +180,34 @@ describe( 'removeInvalidHTML', () => {
 		const input = '<figure><p>test</p><figcaption>test</figcaption></figure>';
 		const output = '<p>test</p>test';
 		expect( removeInvalidHTML( input, schema ) ).toBe( output );
+	} );
+} );
+
+describe( 'getBlockContentSchema', () => {
+	const myContentSchema = {
+		strong: {},
+		em: {},
+	};
+	it( 'should handle a single raw transform', () => {
+		const transforms = [ {
+			blockName: 'core/paragraph',
+			type: 'raw',
+			selector: 'p',
+			schema: {
+				p: {
+					children: myContentSchema,
+				},
+			},
+		} ];
+		const output = {
+			p: {
+				children: myContentSchema,
+				attributes: [ 'id' ],
+				isMatch: undefined,
+			},
+		};
+		expect(
+			getBlockContentSchema( transforms )
+		).toEqual( output );
 	} );
 } );
